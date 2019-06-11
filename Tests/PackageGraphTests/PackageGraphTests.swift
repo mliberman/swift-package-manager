@@ -504,7 +504,8 @@ class PackageGraphTests: XCTestCase {
 
     func testProductDependencyNotFound() throws {
         let fs = InMemoryFileSystem(emptyFiles:
-            "/Foo/Sources/Foo/foo.swift"
+            "/Foo/Sources/Foo/foo.swift",
+            "/Bar/Sources/Bar/bar.swift"
         )
 
         let diagnostics = DiagnosticsEngine()
@@ -514,14 +515,27 @@ class PackageGraphTests: XCTestCase {
                     name: "Foo",
                     path: "/Foo",
                     url: "/Foo",
+                    dependencies: [
+                        PackageDependencyDescription(url: "/Bar", requirement: .upToNextMajor(from: "1.0.0"))
+                    ],
                     targets: [
-                        TargetDescription(name: "Foo", dependencies: ["Barx"]),
+                        TargetDescription(name: "Foo", dependencies: ["Bar", "Barx"]),
+                    ]),
+                Manifest.createV4Manifest(
+                    name: "Bar",
+                    path: "/Bar",
+                    url: "/Bar",
+                    products: [
+                        ProductDescription(name: "Bar", targets: ["Bar"])
+                    ],
+                    targets: [
+                        TargetDescription(name: "Bar"),
                     ]),
             ]
         )
 
         DiagnosticsEngineTester(diagnostics) { result in
-            result.check(diagnostic: "Product 'Barx' not found. It is required by target 'Foo'.", behavior: .error, location: "'Foo' /Foo")
+            result.check(diagnostic: "Product 'Barx' not found. It is required by target 'Foo'. Did you mean 'Bar'?", behavior: .error, location: "'Foo' /Foo")
         }
     }
 
